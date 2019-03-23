@@ -26,7 +26,7 @@ def merge_tile_pic(level, row_start, row_end, col_start, col_end):
     """
     result_filepath = '{}.png'.format(123)
 
-    tile_dir = os.path.join(map_path, 'L{}'.format(level))
+    tile_dir = os.path.join(map_path, str(level))
 
     # 拼接瓦片，生成底图
     color = (255, 255, 255, 0)
@@ -35,34 +35,37 @@ def merge_tile_pic(level, row_start, row_end, col_start, col_end):
     height = int((row_end - row_start + 1) * tile_size)
 
     out = Image.new('RGBA', (width, height), color)
+    out_satellite = Image.new('RGBA', (width, height), color)
+    out_overlay = Image.new('RGBA', (width, height), color)
     imx = 0
     for row in range(row_start, row_end + 1):
         imy = 0
         for col in range(col_start, col_end + 1):
-            tile_file = os.path.join(tile_dir, 'R{:0>6}'.format(row), 'C{:0>6}.jpg'.format(col))
+            tile_file = os.path.join(tile_dir, str(col), '{}.jpg'.format(row))
             if os.path.exists(tile_file):
-                tile = Image.open(tile_file)
-                out.paste(tile, (imy, imx))
+                satellite = Image.open(tile_file)
+                overlay_file = tile_file.replace('satellite', 'overlay').replace('jpg', 'png')
+                out_satellite.paste(satellite, (imy, imx))
+                if os.path.exists(overlay_file):
+                    overlay = Image.open(overlay_file)
+                    out_overlay.paste(satellite, (imy, imx), overlay)
             imy += tile_size
         imx += tile_size
-    print('保存图片')
-    out.save(result_filepath)
+    out_satellite.paste(out_overlay, (0, 0), out_overlay)
+    out_satellite.save(result_filepath)
 
 
-def num2deg(col, row, level):
+def num2deg(col, row, zoom):
     """
 
-    :param xtile: 瓦片列数col
-    :param ytile: 瓦片行数row
-    :param zoom: 瓦片缩放等级， level - 1
+    :param col: 瓦片列数col
+    :param row: 瓦片行数row
+    :param zoom: 瓦片缩放等级
     :return: lat_deg: 纬度， lon_deg 经度 返回的是瓦片左上角的的经纬度
     """
-    xtile = col - 1
-    ytile = row - 1
-    zoom = level - 1
     n = 2.0 ** zoom
-    lon_deg = xtile / n * 360.0 - 180.0
-    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+    lon_deg = col / n * 360.0 - 180.0
+    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * row / n)))
     lat_deg = math.degrees(lat_rad)
     return lat_deg, lon_deg
 
