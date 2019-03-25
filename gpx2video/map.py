@@ -10,12 +10,17 @@ from gpx2video.config import map_path
 tile_size = 256  # 瓦片大小256*256
 
 
-def get_tile_bound(lat, lon):
+def get_tile_bound(lat, lon, level):
     """获取瓦片的编号范围"""
-    return 0, 0, 0, 0
+    col, row = deg2num(lat, lon, level)  # 中心
+    row_start = row - 3
+    row_end = row + 2
+    col_start = col - 3
+    col_end = col + 2
+    return row_start, row_end, col_start, col_end
 
 
-def merge_tile_pic(level, row_start, row_end, col_start, col_end):
+def merge_tile_pic(level, row_start, row_end, col_start, col_end, filename=None):
     """
     :param level: 地图等级
     :param row_start: 瓦片行号起点
@@ -24,7 +29,7 @@ def merge_tile_pic(level, row_start, row_end, col_start, col_end):
     :param col_end: 瓦片列号终点
     :return: 合成好的图片
     """
-    result_filepath = '{}.png'.format(123)
+    result_filepath = filename or '{}.png'.format(int(time.time()))
 
     tile_dir = os.path.join(map_path, str(level))
 
@@ -34,7 +39,6 @@ def merge_tile_pic(level, row_start, row_end, col_start, col_end):
     width = int((col_end - col_start + 1) * tile_size)
     height = int((row_end - row_start + 1) * tile_size)
 
-    out = Image.new('RGBA', (width, height), color)
     out_satellite = Image.new('RGBA', (width, height), color)
     out_overlay = Image.new('RGBA', (width, height), color)
     imx = 0
@@ -52,7 +56,13 @@ def merge_tile_pic(level, row_start, row_end, col_start, col_end):
             imy += tile_size
         imx += tile_size
     out_satellite.paste(out_overlay, (0, 0), out_overlay)
-    out_satellite.save(result_filepath)
+    # crop
+    # new_height = width * 9/16
+    # height_diff = height - new_height if height > new_height else height
+    # out_satellite = out_satellite.crop((0, height_diff//2, width, height - height_diff//2))
+    out_satellite = out_satellite.resize((1920, 1920))  # 1080p
+    # out_satellite.show()
+    return out_satellite
 
 
 def num2deg(col, row, zoom):
@@ -76,8 +86,18 @@ def deg2num(lat_deg, lon_deg, zoom):
     n = 2.0 ** zoom
     xtile = int((lon_deg + 180.0) / 360.0 * n)
     ytile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
-    return xtile+1, ytile+1  # col, row
+    return xtile, ytile  # col, row
+
+
+def deg2pixel(lat_deg, lon_deg, zoom):
+    n = 2.0 ** zoom
+    lat_ang = lat_deg * math.pi / 180
+    pixel_x = int((lon_deg + 180.0) / 360.0 * n * 256 % 256)
+    pixel_y = int((1 - math.log(math.tan(lat_ang) + 1/math.cos(lat_ang))/(2*math.pi)) * n * 256 % 256)
+    return pixel_x, pixel_y
 
 
 if __name__ == '__main__':
-    pass
+    row_start, row_end, col_start, col_end = get_tile_bound(30.191082174611765, 120.08268313531809, 16)
+    im = merge_tile_pic(16, row_start, row_end, col_start, col_end)
+    im.show()
