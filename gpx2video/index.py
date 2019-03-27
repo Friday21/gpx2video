@@ -1,4 +1,5 @@
 import os
+import re
 
 from gpx2video.config import map_path
 from gpx2video.map import num2deg
@@ -73,11 +74,11 @@ def create_index_by_txt():
 def create_index_by_tile():
     """根据地图目录下瓦片的行号和列号以及缩放层级来计算经纬度"""
     indexes = {}
-    for i in range(10, 19):
-        zoom_dir = os.path.join(map_path, 'L{}'.format(i))
+    for i in range(10, 21):
+        zoom_dir = os.path.join(map_path, str(i))
         dirs = os.listdir(zoom_dir)
-        dirs = [dir for dir in dirs if dir.startswith('R')]
-        row = len(dirs)
+        dirs = [dir for dir in dirs if re.match('\d+', dir)]
+        col = len(dirs)
         dirs.sort()
 
         first_dir_path = os.path.join(zoom_dir, dirs[0])
@@ -86,23 +87,20 @@ def create_index_by_tile():
         last_filenames = os.listdir(os.path.join(zoom_dir, dirs[-1]))
         last_filenames = [filename for filename in last_filenames if filename.endswith('.jpg')]
         last_filenames.sort()
-        col = len(first_filenames)
+        row = len(first_filenames)
         first_filenames.sort()
 
-        start_row_num = int(dirs[0].replace('R', ''))
-        start_col_num = int(first_filenames[0].replace('C', '').replace('.jpg', ''))
+        start_col_num = int(dirs[0])
+        start_row_num = int(first_filenames[0].replace('.jpg', ''))
 
-        end_row_num = int(dirs[-1].replace('R', ''))
-        end_col_num = int(last_filenames[-1].replace('C', '').replace('.jpg', ''))
+        end_col_num = int(dirs[-1])
+        end_row_num = int(last_filenames[-1].replace('.jpg', ''))
 
         left_top_latitude, left_top_longitude = num2deg(start_col_num, start_row_num, i)
         right_top_latitude, right_top_longitude = num2deg(end_col_num, end_row_num, i)
-
-        row_step = (left_top_latitude - right_top_latitude) / (row-1)
-        col_step = (right_top_longitude - left_top_longitude) / (col-1)
-
-        right_down_latitude = right_top_latitude - row_step
-        right_down_longitude = right_top_longitude + col_step
+        right_down_latitude, right_down_longitude = num2deg(end_col_num+1, end_row_num+1, i)
+        row_step = right_top_latitude - right_down_latitude
+        col_step = right_down_longitude - right_top_longitude
 
         indexes[i] = {'row': row, 'col': col,
                       'left_top_latitude': left_top_latitude,
