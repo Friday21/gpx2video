@@ -16,10 +16,10 @@ ee = 0.00669342162296594323  # 扁率
 def get_tile_bound(lat, lon, level):
     """获取瓦片的编号范围"""
     col, row = deg2num(lat, lon, level)  # 中心
-    row_start = row - 6
-    row_end = row + 5
-    col_start = col - 6
-    col_end = col + 5
+    row_start = row - 8
+    row_end = row + 7
+    col_start = col - 8
+    col_end = col + 7
     return row_start, row_end, col_start, col_end, row, col
 
 
